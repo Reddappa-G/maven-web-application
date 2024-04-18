@@ -1,0 +1,34 @@
+node{
+    
+    properties([buildDiscarder(logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '', numToKeepStr: '5')), pipelineTriggers([githubPush()])])
+    
+    def mavenHome = tool name: 'mvn3.9.6'
+    
+    echo "This is maven-web-application pipeline"
+    echo "Build Number is: ${env.BUILD_NUMBER}"
+    echo "JOB Name is: ${env.JOB_NAME}"
+    echo "JOB Base Name is: ${env.JOB_BASE_NAME}"
+    echo "Jenkins url is: ${env.JENKINS_URL}"
+    echo "Node Name is: ${env.NODE_NAME}"
+    
+    stage('CheckOutCode'){
+        git branch: 'development', credentialsId: '8102fe1d-f2ee-4d51-90d2-a04166276c3a', url: 'https://github.com/Reddappa-G/maven-web-application.git'
+    }
+    stage('Build'){
+        sh "${mavenHome}/bin/mvn clean package"
+    }
+    stage('SonarReport'){
+        sh "${mavenHome}/bin/mvn clean sonar:sonar"
+    }
+    stage('nexusArtifact'){
+         sh "${mavenHome}/bin/mvn clean deploy"
+    }
+    
+    
+    stage('deployInTomcat'){
+        sshagent(['f45ae1be-8353-48fd-8c61-cb5aa208b572']) {
+         sh "scp -o StrictHostKeyChecking=no target/maven-web-application.war ec2-user@172.31.37.187:/opt/apache-tomcat-9.0.86/webapps/"
+    }
+    }
+    
+}
